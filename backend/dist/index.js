@@ -3,6 +3,7 @@ dotenv.config();
 import express from "express";
 import path from "path";
 import { fileURLToPath } from "url";
+import { env } from './config/env';
 import { initDB } from './config/database';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
@@ -37,7 +38,7 @@ app.use(globalErrorHandler);
 // Start cron job and run initial status update AFTER DB is ready
 alumniMeetCron.start();
 alumniTalkStatus();
-const PORT = process.env.PORT || 3000;
+const PORT = Number(env.PORT) || 3000;
 app.listen(PORT, () => {
     console.log(`listening on port ${PORT}`);
 });
