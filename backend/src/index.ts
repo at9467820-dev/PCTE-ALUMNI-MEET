@@ -4,6 +4,7 @@ dotenv.config();
 import express, { Application } from "express";
 import path from "path";
 import { initDB } from './config/database';
+import { seedDefaultAdmin } from './config/seed';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import globalErrorHandler from "./utility/globalError";
@@ -56,7 +57,8 @@ const PORT = Number(process.env.PORT) || 3000;
 
 // Connect to MongoDB first, then start server
 initDB()
-  .then(() => {
+  .then(async () => {
+    await seedDefaultAdmin();
     app.listen(PORT, () => {
       console.log(`Server listening on port ${PORT}`);
     });
