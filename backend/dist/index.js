@@ -41,7 +41,7 @@ app.use(cors({
         "https://pcte-alumni-talk-dep-ready-7smeq2pj4-ankits-projects-0633ce92.vercel.app",
         "http://192.168.29.104:5173"
     ],
-    credentials: truprocess.e
+    credentials: process.env.NODE_ENV === "production" ? true : true
 }));
 app.use("/", alumniMeetRoute);
 app.use("/admin", adminAuthRoute);
@@ -50,7 +50,7 @@ app.use(globalErrorHandler);
 // Start cron job and run initial status update AFTER DB is ready
 alumniMeetCron.start();
 alumniTalkStatus();
-const PORT = Number(env.PORT) || 3000;
+const PORT = Number(process.env.PORT) || 3000;
 app.listen(PORT, () => {
     console.log(`listening on port ${PORT}`);
 });
