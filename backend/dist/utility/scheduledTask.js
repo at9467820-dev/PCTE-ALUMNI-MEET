@@ -1,12 +1,17 @@
 import cron from 'node-cron';
-import alumniMeetModel from '../model/alumniMeet.model';
+import { updateMeetStatusesDao } from '../dao/alumniMeet.dao';
 const alumniTalkStatus = async () => {
-    const now = new Date();
-    console.log("Status updated at:", now);
-    await alumniMeetModel.updateMany({ time: { $lte: now }, status: 'Upcoming' }, { $set: { status: 'Ongoing' } });
-    await alumniMeetModel.updateMany({ time: { $lt: now }, status: 'Ongoing' }, { $set: { status: 'Completed' } });
-    console.log("Status updated at:", now);
+    try {
+        const now = new Date();
+        console.log("Status update check at:", now);
+        await updateMeetStatusesDao();
+        console.log("Status updated at:", now);
+    }
+    catch (err) {
+        console.log("Scheduled task error:", err.message);
+    }
 };
-alumniTalkStatus();
 const alumniMeetCron = cron.schedule("0 * * * *", alumniTalkStatus);
+alumniMeetCron.stop();
+export { alumniTalkStatus };
 export default alumniMeetCron;

@@ -1,301 +1,208 @@
-import mongoose from "mongoose";
-import alumniModel from "../model/alumni.model";
-import alumniMeetModel from "../model/alumniMeet.model";
-import { deleteFromCloudinary } from "../utility/cloudnaryDeletion";
-import feedbackModel from "../model/feedback.model";
-// good
+import db from '../config/database';
+import { randomUUID } from 'crypto';
+function parseAlumniRow(row) {
+    if (!row)
+        return row;
+    return { ...row, careerTimeline: JSON.parse(row.careerTimeline || '[]'), achievements: JSON.parse(row.achievements || '[]') };
+}
+function parseMeetRow(row) {
+    if (!row)
+        return row;
+    return {
+        ...row,
+        classJoined: JSON.parse(row.classJoined || '[]'),
+        alumni: JSON.parse(row.alumni || '[]'),
+        media: { images: JSON.parse(row.media_images || '[]'), videoLink: row.media_videoLink || '', videoId: row.media_videoId || '' },
+    };
+}
+function populateMeetAlumni(meet) {
+    const alumniIds = meet.alumni;
+    if (Array.isArray(alumniIds) && alumniIds.length > 0) {
+        const placeholders = alumniIds.map(() => '?').join(',');
+        const rows = db.prepare(`SELECT * FROM alumni WHERE _id IN (${placeholders})`).all(...alumniIds);
+        meet.alumni = rows.map(parseAlumniRow);
+    }
+    else {
+        meet.alumni = [];
+    }
+    return meet;
+}
 export const getAllAlumniDao = async () => {
-    try {
-        const allAlumnis = await alumniModel.find().sort({ createdAt: -1 });
-        return allAlumnis;
-    }
-    catch (err) {
-        throw new Error("SomeThing went Wrong while Fetching all Alumnis");
-    }
+    const rows = db.prepare('SELECT * FROM alumni ORDER BY createdAt DESC').all();
+    return rows.map(parseAlumniRow);
 };
-// production ready done
 export const getAlumniById = async (id) => {
-    try {
-        const alumni = await alumniModel.findById(id);
-        if (!alumni) {
-            throw new Error("Alumni not found");
-        }
-        return alumni;
-    }
-    catch (err) {
-        console.error("DAO Error [getAlumniById]:", err);
-        throw new Error(`Failed to fetch Alumni by ID: ${err.message}`);
-    }
+    const row = db.prepare('SELECT * FROM alumni WHERE _id = ?').get(id);
+    if (!row)
+        throw new Error('Alumni not found');
+    return parseAlumniRow(row);
 };
-// production ready done
 export const addNewAlumniDao = async (data) => {
+    const _id = randomUUID();
+    const now = new Date().toISOString();
     try {
-        const newAlumni = new alumniModel(data);
-        await newAlumni.save();
-        return newAlumni;
+        db.prepare(`INSERT INTO alumni (_id,name,profilePic,fileName,batch,linkedIn,email,currentCompany,currentRole,careerTimeline,achievements,quote,createdAt,updatedAt) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).run(_id, data.name, data.profilePic?.toString() || '', data.fileName?.toString() || '', data.batch, data.linkedIn || '', data.email, data.currentCompany, data.currentRole, JSON.stringify(data.careerTimeline || []), JSON.stringify(data.achievements || []), data.quote || '', now, now);
+        return parseAlumniRow(db.prepare('SELECT * FROM alumni WHERE _id = ?').get(_id));
     }
     catch (err) {
-        if (err.code === 11000 && err.keyValue?.email) {
-            throw new Error(`Duplicate email found: ${err.keyValue.email}`);
-        }
-        if (err instanceof mongoose.Error.ValidationError) {
-            throw new Error(`Validation Error: ${err.message}`);
-        }
+        if (err.message?.includes('UNIQUE constraint failed: alumni.email'))
+            throw new Error(`Duplicate email found: ${data.email}`);
         throw err;
     }
 };
-// production ready done
-export const createNewAlumniMeetDao = async (data) => {
-    try {
-        const newAlumniMeet = new alumniMeetModel(data);
-        await newAlumniMeet.save();
-        return newAlumniMeet;
-    }
-    catch (err) {
-        console.error("DAO Error [createNewAlumniMeet]:", err);
-        if (err instanceof mongoose.Error.ValidationError) {
-            throw new Error(`Validation Error: ${err.message}`);
-        }
-        throw new Error("Failed to create Alumni Meet. Please try again later.");
-    }
-};
-// Production ready done
 export const checkAlumniByIdDao = async (id) => {
-    try {
-        const alumni = await alumniModel.exists({ _id: id });
-        return Boolean(alumni);
-    }
-    catch (err) {
-        console.error("DAO Error [checkAlumniById]:", err);
-        throw new Error(`Failed to check Alumni by ID: ${err.message}`);
-    }
+    return Boolean(db.prepare('SELECT _id FROM alumni WHERE _id = ?').get(id));
 };
-// Production ready done
 export const checkAlumniMeetsDaoByAlumniId = async (id) => {
-    try {
-        const alumniMeets = await alumniMeetModel.exists({ alumni: id });
-        return Boolean(alumniMeets);
+    const rows = db.prepare('SELECT alumni FROM alumniMeets').all();
+    for (const row of rows) {
+        const ids = JSON.parse(row.alumni || '[]');
+        if (ids.includes(id))
+            return true;
     }
-    catch (err) {
-        console.error("DAO Error [checkAlumniMeets]:", err);
-        throw new Error(`Failed to check Alumni Meets by Alumni ID: ${err.message}`);
-    }
+    return false;
 };
 export const checkAlumniMeetsDaoByid = async (id) => {
-    try {
-        const alumniMeets = await alumniMeetModel.exists({ _id: id });
-        return Boolean(alumniMeets);
-    }
-    catch (err) {
-        console.error("DAO Error [checkAlumniMeets]:", err);
-        throw new Error(`Failed to check Alumni Meets by Alumni ID: ${err.message}`);
-    }
+    return Boolean(db.prepare('SELECT _id FROM alumniMeets WHERE _id = ?').get(id));
 };
-//Production ready done
 export const deleteAlumniDao = async (id) => {
-    try {
-        if (!mongoose.Types.ObjectId.isValid(id)) {
-            throw new Error("Invalid Alumni ID format");
-        }
-        const deletedAlumni = await alumniModel.findByIdAndDelete(id);
-        if (!deletedAlumni) {
-            throw new Error("Alumni not found");
-        }
-        return deletedAlumni;
-    }
-    catch (err) {
-        console.error("DAO Error [deleteAlumni]:", err);
-        if (err instanceof mongoose.Error.CastError) {
-            throw new Error("Invalid Alumni ID format");
-        }
-        throw new Error(`Failed to delete Alumni : ${err.message}`);
-    }
+    const existing = db.prepare('SELECT * FROM alumni WHERE _id = ?').get(id);
+    if (!existing)
+        throw new Error('Alumni not found');
+    db.prepare('DELETE FROM alumni WHERE _id = ?').run(id);
+    return parseAlumniRow(existing);
 };
-//production ready done
 export const findAlumniByIdDao = async (id) => {
-    try {
-        if (!mongoose.Types.ObjectId.isValid(id)) {
-            throw new Error("Invalid Alumni ID format");
-        }
-        return await alumniModel.findById(id);
-    }
-    catch (err) {
-        console.log("DAO Error [findAlumniById] : ", err);
-        if (err instanceof mongoose.Error.CastError) {
-            throw new Error("Invalid Alumni ID format");
-        }
-        throw new Error(`Failed to find Alumni using Id : ${err.message}`);
-    }
+    const row = db.prepare('SELECT * FROM alumni WHERE _id = ?').get(id);
+    return row ? parseAlumniRow(row) : null;
 };
-//production ready done
 export const updateAlumniDao = async (id, data) => {
-    try {
-        if (!mongoose.Types.ObjectId.isValid(id)) {
-            throw new Error("Invalid Alumni Id format");
-        }
-        const updatedAlumni = await alumniModel.findByIdAndUpdate(id, data, {
-            new: true,
-            runValidators: true,
-        });
-        return updatedAlumni;
-    }
-    catch (err) {
-        console.error("DAO Error [updateAlumni] : ", err);
-        if (err instanceof mongoose.Error.CastError) {
-            throw new Error("validation Error : " + err.message);
-        }
-        throw new Error(`Can't update alumniData : ${err.message}`);
-    }
+    const now = new Date().toISOString();
+    const existing = db.prepare('SELECT * FROM alumni WHERE _id = ?').get(id);
+    if (!existing)
+        return null;
+    db.prepare(`UPDATE alumni SET name=?, profilePic=?, fileName=?, batch=?, linkedIn=?, email=?, currentCompany=?, currentRole=?, careerTimeline=?, achievements=?, quote=?, updatedAt=? WHERE _id=?`).run(data.name || existing.name, data.profilePic ? String(data.profilePic) : existing.profilePic, data.fileName ? String(data.fileName) : existing.fileName, data.batch || existing.batch, data.linkedIn !== undefined ? data.linkedIn : existing.linkedIn, data.email || existing.email, data.currentCompany || existing.currentCompany, data.currentRole || existing.currentRole, JSON.stringify(data.careerTimeline || JSON.parse(existing.careerTimeline)), JSON.stringify(data.achievements || JSON.parse(existing.achievements)), data.quote !== undefined ? data.quote : existing.quote, now, id);
+    return parseAlumniRow(db.prepare('SELECT * FROM alumni WHERE _id = ?').get(id));
 };
-//Production ready done
+export const createNewAlumniMeetDao = async (data) => {
+    const _id = randomUUID();
+    const now = new Date().toISOString();
+    const alumniArray = Array.isArray(data.alumni) ? data.alumni : [data.alumni];
+    db.prepare(`INSERT INTO alumniMeets (_id,title,time,classJoined,organizedBy,location,alumni,media_images,media_videoLink,media_videoId,status,description,createdAt,updatedAt) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).run(_id, data.title, new Date(data.time).toISOString(), JSON.stringify(data.classJoined || []), data.organizedBy, data.location, JSON.stringify(alumniArray), JSON.stringify(data.media?.images || []), data.media?.videoLink || '', data.media?.videoId || '', 'Upcoming', data.description, now, now);
+    return parseMeetRow(db.prepare('SELECT * FROM alumniMeets WHERE _id = ?').get(_id));
+};
 export const getAllAlumniMeetsDao = async () => {
-    try {
-        const alumniMeets = await alumniMeetModel.find().sort({ createdAt: -1 }).populate("alumni");
-        if (!alumniMeets || alumniMeets.length === 0) {
-            throw new Error("Alumni Meets not found");
-        }
-        return alumniMeets;
-    }
-    catch (err) {
-        console.error("DAO Error [getAllMeets] : ", err.message);
-        throw new Error(`Failed to fetch Meet : ${err.message}`);
-    }
+    const rows = db.prepare('SELECT * FROM alumniMeets ORDER BY createdAt DESC').all();
+    if (!rows || rows.length === 0)
+        throw new Error('Alumni Meets not found');
+    return rows.map(parseMeetRow).map(populateMeetAlumni);
 };
 export const updateAlumniMeetDao = async (id, data, talkImages, talkVideo, deleteImages) => {
-    try {
-        if (!mongoose.Types.ObjectId.isValid(id)) {
-            throw new Error("Invalid Meet Id format");
-        }
-        const alumniMeet = await alumniMeetModel.findById(id);
-        if (!alumniMeet) {
-            throw new Error("Alumni Meet not found");
-        }
-        console.log(data);
-        Object.assign(alumniMeet, data);
-        if (talkImages) {
-            alumniMeet.media.images.push(...talkImages);
-        }
-        if (talkVideo) {
-            console.log(talkVideo.videoLink);
-            alumniMeet.media.videoLink = talkVideo.videoLink;
-            alumniMeet.media.videoId = talkVideo.videoId;
-        }
-        if (deleteImages.length > 0) {
-            alumniMeet.media.images = alumniMeet.media.images.filter((img) => !deleteImages.includes(img.imageId));
-        }
-        await alumniMeet.save();
-        return alumniMeet;
+    const existing = db.prepare('SELECT * FROM alumniMeets WHERE _id = ?').get(id);
+    if (!existing)
+        throw new Error('Alumni Meet not found');
+    const now = new Date().toISOString();
+    const meet = parseMeetRow(existing);
+    const alumniArray = data.alumni ? (Array.isArray(data.alumni) ? data.alumni : [data.alumni]) : meet.alumni;
+    let imgs = meet.media.images || [];
+    if (talkImages && Array.isArray(talkImages) && talkImages.length > 0)
+        imgs = [...imgs, ...talkImages];
+    if (deleteImages && deleteImages.length > 0)
+        imgs = imgs.filter((img) => !deleteImages.includes(img.imageId));
+    let vLink = meet.media.videoLink || '', vId = meet.media.videoId || '';
+    if (talkVideo && talkVideo.videoLink) {
+        vLink = talkVideo.videoLink;
+        vId = talkVideo.videoId;
     }
-    catch (err) {
-        if (err instanceof mongoose.Error.CastError) {
-            throw new Error("Invalid AlumniMeet ID format");
-        }
-        if (err instanceof mongoose.Error.ValidationError) {
-            throw new Error(`Validation Error: ${err.message}`);
-        }
-        throw new Error(`Database error while updating Alumni Meet: ${err.message}`);
-    }
+    db.prepare(`UPDATE alumniMeets SET title=?,time=?,classJoined=?,organizedBy=?,location=?,alumni=?,media_images=?,media_videoLink=?,media_videoId=?,description=?,updatedAt=? WHERE _id=?`).run(data.title || meet.title, data.time ? new Date(data.time).toISOString() : existing.time, JSON.stringify(data.classJoined || meet.classJoined), data.organizedBy || meet.organizedBy, data.location || meet.location, JSON.stringify(alumniArray), JSON.stringify(imgs), vLink, vId, data.description || meet.description, now, id);
+    return parseMeetRow(db.prepare('SELECT * FROM alumniMeets WHERE _id = ?').get(id));
 };
 export const updateMeetMediaDao = async (images, video, videoId, id) => {
-    try {
-        if (!mongoose.Types.ObjectId.isValid(id)) {
-            throw new Error("Invalid Meet Id format");
-        }
-        const meet = await alumniMeetModel.findById(id);
-        if (!meet) {
-            throw new Error("Alumni Meet not found");
-        }
-        if (images && images.length > 0) {
-            images.forEach((img) => {
-                meet?.media.images.push(img);
-            });
-        }
-        if (video) {
-            if (meet.media.videoId) {
-                console.log(meet.media.videoId);
-                await deleteFromCloudinary(meet.media.videoId, "video");
-            }
-            meet.media.videoLink = video;
-            meet.media.videoId = videoId;
-        }
-        await meet.save();
-        return meet;
+    const existing = db.prepare('SELECT * FROM alumniMeets WHERE _id = ?').get(id);
+    if (!existing)
+        throw new Error('Alumni Meet not found');
+    const meet = parseMeetRow(existing);
+    const now = new Date().toISOString();
+    let imgs = meet.media.images || [];
+    if (images && images.length > 0)
+        imgs = [...imgs, ...images];
+    let vLink = meet.media.videoLink || '', vId = meet.media.videoId || '';
+    const oldVideoId = vId;
+    if (video) {
+        vLink = video;
+        vId = videoId;
     }
-    catch (err) {
-        if (err instanceof mongoose.Error.CastError) {
-            throw new Error("Invalid Neet ID format");
-        }
-        if (err instanceof mongoose.Error.ValidationError) {
-            throw new Error(`Validation Error: ${err.message}`);
-        }
-        throw new Error(`Database error while updating Alumni Meet Media: ${err.message}`);
-    }
+    db.prepare(`UPDATE alumniMeets SET media_images=?,media_videoLink=?,media_videoId=?,updatedAt=? WHERE _id=?`).run(JSON.stringify(imgs), vLink, vId, now, id);
+    const updated = parseMeetRow(db.prepare('SELECT * FROM alumniMeets WHERE _id = ?').get(id));
+    updated._oldVideoId = oldVideoId;
+    return updated;
 };
 export const deleteMeetMediaDao = async (imageIds, id) => {
-    try {
-        if (mongoose.Types.ObjectId.isValid(id)) {
-            throw new Error("Invalid Meet Id format");
-        }
-        const meet = await alumniMeetModel.findById(id);
-        if (!meet) {
-            throw new Error("Alumni Meet not found");
-        }
-        if (imageIds && imageIds.length > 0) {
-            await deleteFromCloudinary(imageIds);
-        }
-    }
-    catch (err) {
-        throw new Error(`Database error while deleting Alumni Meet Media: ${err.message}`);
-    }
+    const existing = db.prepare('SELECT * FROM alumniMeets WHERE _id = ?').get(id);
+    if (!existing)
+        throw new Error('Alumni Meet not found');
+    const meet = parseMeetRow(existing);
+    const now = new Date().toISOString();
+    const imgs = meet.media.images.filter((img) => !imageIds.includes(img.imageId));
+    db.prepare(`UPDATE alumniMeets SET media_images=?,updatedAt=? WHERE _id=?`).run(JSON.stringify(imgs), now, id);
+    return parseMeetRow(db.prepare('SELECT * FROM alumniMeets WHERE _id = ?').get(id));
 };
 export const deleteAlumniMeetDao = async (id) => {
-    try {
-        if (!mongoose.Types.ObjectId.isValid(id)) {
-            throw new Error("Invalid Alumni Meet ID format");
-        }
-        const deletedAlumniMeet = await alumniMeetModel.findByIdAndDelete(id);
-        if (!deletedAlumniMeet) {
-            throw new Error("Deletion failed. Alumni Meet may have already been deleted.");
-        }
-        return deletedAlumniMeet;
-    }
-    catch (err) {
-        if (err instanceof mongoose.Error.CastError) {
-            throw new Error("Invalid Alumni Meet ID format");
-        }
-        throw new Error("Database error while deleting Alumni Meet: " + err.message);
-    }
+    const existing = db.prepare('SELECT * FROM alumniMeets WHERE _id = ?').get(id);
+    if (!existing)
+        throw new Error('Deletion failed. Alumni Meet may have already been deleted.');
+    db.prepare('DELETE FROM alumniMeets WHERE _id = ?').run(id);
+    return parseMeetRow(existing);
 };
 export const addFeedbackDao = async (name, company, comment) => {
-    try {
-        const feedbackDoc = new feedbackModel({ name, company, comment });
-        await feedbackDoc.save();
-        return feedbackDoc;
-    }
-    catch (err) {
-        throw new Error("Database error while adding new Feedback: " + err.message);
-    }
+    const _id = randomUUID();
+    const now = new Date().toISOString();
+    const avatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=random&color=fff&size=128&bold=true&rounded=true`;
+    db.prepare(`INSERT INTO feedback (_id,avatar,name,company,comment,createdAt,updatedAt) VALUES (?,?,?,?,?,?,?)`).run(_id, avatar, name, company, comment, now, now);
+    return db.prepare('SELECT * FROM feedback WHERE _id = ?').get(_id);
 };
 export const getTalksPaginationDao = async (page, limit, now) => {
-    try {
-        const skip = (page - 1) * limit;
-        const talks = await alumniMeetModel.find({ time: { $lte: now } }).sort({ createdAt: -1 }).skip(skip).limit(limit).lean().populate({ path: "alumni" });
-        const total = await alumniMeetModel.countDocuments({ time: { $lte: now } });
-        return { talks, total };
-    }
-    catch (err) {
-        throw new Error("Database error while fetching talks on frontend: " + err.message);
-    }
+    const skip = (page - 1) * limit;
+    const nowISO = now.toISOString();
+    const talks = db.prepare('SELECT * FROM alumniMeets WHERE time <= ? ORDER BY createdAt DESC LIMIT ? OFFSET ?').all(nowISO, limit, skip);
+    const totalRow = db.prepare('SELECT COUNT(*) as count FROM alumniMeets WHERE time <= ?').get(nowISO);
+    const parsedTalks = talks.map(parseMeetRow).map(populateMeetAlumni);
+    return { talks: parsedTalks, total: totalRow.count };
 };
 export const feedbackPaginationDao = async (page, limit) => {
-    try {
-        const skip = (page - 1) * limit;
-        const feedbacks = await feedbackModel.find().sort({ createdAt: -1 }).skip(skip).limit(limit);
-        console.log(feedbacks);
-        const total = await feedbackModel.countDocuments();
-        return { feedbacks, total };
-    }
-    catch (err) {
-        throw new Error("Database error while fetching feedbacks on frontend: " + err.message);
-    }
+    const skip = (page - 1) * limit;
+    const feedbacks = db.prepare('SELECT * FROM feedback ORDER BY createdAt DESC LIMIT ? OFFSET ?').all(limit, skip);
+    const totalRow = db.prepare('SELECT COUNT(*) as count FROM feedback').get();
+    return { feedbacks, total: totalRow.count };
+};
+// New DAOs for controller functions that previously used Mongoose directly
+export const getRandomAlumniDao = async (count) => {
+    const rows = db.prepare('SELECT * FROM alumni ORDER BY RANDOM() LIMIT ?').all(count);
+    return rows.map(parseAlumniRow);
+};
+export const getMeetsOnFrontendDao = async (type) => {
+    const nowISO = new Date().toISOString();
+    let rows;
+    if (type === 'randomUpcomings')
+        rows = db.prepare('SELECT * FROM alumniMeets WHERE time > ? ORDER BY RANDOM() LIMIT 1').all(nowISO);
+    else if (type === 'allUpcomings')
+        rows = db.prepare('SELECT * FROM alumniMeets WHERE time > ?').all(nowISO);
+    else if (type === 'randomPast')
+        rows = db.prepare('SELECT * FROM alumniMeets WHERE time < ? ORDER BY RANDOM() LIMIT 3').all(nowISO);
+    else if (type === 'allPast')
+        rows = db.prepare('SELECT * FROM alumniMeets WHERE time < ?').all(nowISO);
+    else
+        rows = [];
+    return rows.map(parseMeetRow).map(populateMeetAlumni);
+};
+export const getRandomFeedbacksDao = async (count) => {
+    return db.prepare('SELECT * FROM feedback ORDER BY RANDOM() LIMIT ?').all(count);
+};
+export const getAllMeetsForReportDao = async () => {
+    const rows = db.prepare('SELECT * FROM alumniMeets ORDER BY createdAt ASC').all();
+    return rows.map(parseMeetRow).map(populateMeetAlumni);
+};
+export const updateMeetStatusesDao = async () => {
+    const nowISO = new Date().toISOString();
+    db.prepare("UPDATE alumniMeets SET status='Completed' WHERE time < ? AND status IN ('Upcoming','Ongoing')").run(nowISO);
 };

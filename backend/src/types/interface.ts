@@ -43,7 +43,7 @@ export interface meetMedia{
   videoId?:string
 }
 
-export  interface customPayload extends JwtPayload{
+export interface customPayload extends JwtPayload{
   id:string,
   email:string
 }
@@ -64,7 +64,7 @@ export interface loginData{
   password:string
 }
 
-export interface JwtPayload{
+export interface CustomJwtPayload{
   id:string,
   email:string
 }

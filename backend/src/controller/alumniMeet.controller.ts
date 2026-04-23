@@ -91,7 +91,7 @@ export const updateAlumniMeet = async (req: Request, res: Response, next: NextFu
     const talkImages = images.length > 0 && images;
     const deleteImagesIds: string[] = req.body.deleteImagesIds || [];
     if (deleteImagesIds.length > 0) await deleteFromCloudinary(deleteImagesIds as string[]);
-    const updatedAlumniMeet = await updateAlumniMeetService(id, newData, talkImages, talkVideo, req.body.deleteImages || []);
+    const updatedAlumniMeet = await updateAlumniMeetService(id, newData, talkImages as any, talkVideo as any, req.body.deleteImages || []);
     res.status(200).json({ success: true, message: "Alumni Meet updated successfully", data: updatedAlumniMeet });
   } catch (err: any) { console.log(err.message); next(err); }
 };

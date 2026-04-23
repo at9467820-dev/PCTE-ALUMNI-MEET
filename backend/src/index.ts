@@ -7,14 +7,19 @@ import { fileURLToPath } from "url";
 import { initDB } from './config/database';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
+import globalErrorHandler from "./utility/globalError";
+import alumniMeetRoute from './routes/alumniMeet.route';
+import adminAuthRoute from './routes/auth.route';
+import reportRoute from './routes/report.route';
+import alumniMeetCron, { alumniTalkStatus } from './utility/scheduledTask';
 
 const app: Application = express();
 
-// Initialize SQLite database FIRST
-initDB();
-
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+// Initialize SQLite database FIRST
+initDB();
 
 app.use(cookieParser());
 app.use(express.json());
@@ -33,12 +38,6 @@ app.use(
   })
 );
 
-import globalErrorHandler from "./utility/globalError";
-import alumniMeetRoute from './routes/alumniMeet.route';
-import adminAuthRoute from './routes/auth.route';
-import reportRoute from './routes/report.route';
-import alumniMeetCron, { alumniTalkStatus } from './utility/scheduledTask';
-
 app.use("/", alumniMeetRoute);
 app.use("/admin", adminAuthRoute);
 app.use("/report", reportRoute);
@@ -49,6 +48,7 @@ app.use(globalErrorHandler);
 alumniMeetCron.start();
 alumniTalkStatus();
 
-app.listen(3000, () => {
-  console.log("listening on port 3000");
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+  console.log(`listening on port ${PORT}`);
 });

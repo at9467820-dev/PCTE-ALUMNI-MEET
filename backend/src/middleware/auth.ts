@@ -1,7 +1,7 @@
 import { NextFunction, Request, Response } from "express";
 import { verifyToken } from "../utility/jwt";
 import { UnauthorizedError } from "../utility/customErrors";
-import { JwtPayload } from "../types/interface";
+import { CustomJwtPayload } from "../types/interface";
 
 export const authMiddleware = async(req:Request , res:Response , next:NextFunction)=>{
     try{
@@ -15,7 +15,7 @@ export const authMiddleware = async(req:Request , res:Response , next:NextFuncti
     if(!decode){
         throw new UnauthorizedError("Unauthorized access")
     }
-    req.user = decode as JwtPayload
+    req.user = decode as CustomJwtPayload
     next()
     }catch(err:any){
         console.log(err.message)

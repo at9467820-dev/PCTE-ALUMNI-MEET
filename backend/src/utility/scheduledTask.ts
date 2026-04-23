@@ -12,7 +12,8 @@ const alumniTalkStatus = async () => {
   }
 }
 
-const alumniMeetCron = cron.schedule("0 * * * *", alumniTalkStatus, { scheduled: false })
+const alumniMeetCron = cron.schedule("0 * * * *", alumniTalkStatus)
+alumniMeetCron.stop()
 
 export { alumniTalkStatus }
 export default alumniMeetCron
