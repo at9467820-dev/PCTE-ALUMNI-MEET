@@ -1,5 +1,5 @@
 // customErrors.ts
-import ApiError from "./error.js"; // or "./error.ts" if you're importing directly in TS
+import ApiError from "./error";
 
 // 401 Unauthorized
 export class UnauthorizedError extends ApiError {

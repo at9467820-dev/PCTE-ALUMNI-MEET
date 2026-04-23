@@ -1,15 +1,19 @@
-import { addNewAlumniService, addNewFeedbackService, createNewAlumniMeetService, deleteAlumniMeetService, deleteAlumniService, deleteMeetMediaService, feedbackPaginationService, getAllAlumniListService, getAllAlumniMeetsService, getTalksPaginationService, updateAlumniMeetService, updateAlumniService, updateMeetMediaService, } from "../services/alumniMeet.service";
-import { deleteFromCloudinary } from "../utility/cloudnaryDeletion";
-import { getMeetsOnFrontendDao, getRandomAlumniDao, getRandomFeedbacksDao } from "../dao/alumniMeet.dao";
-export const getAllAlumni = async (req, res, next) => {
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.feedbackPagination = exports.getTalksPagination = exports.fetchRandomFeedbacks = exports.addNewFeedback = exports.getSomeRandomAlumni = exports.getMeetsOnFrontend = exports.deleteAlumniMeet = exports.deleteMeetMedia = exports.updateMeetMedia = exports.updateAlumniMeet = exports.getAllAlumniMeets = exports.addNewAlumniMeet = exports.deleteAlumni = exports.updateAlumni = exports.addNewAlumni = exports.getAllAlumni = void 0;
+const alumniMeet_service_1 = require("../services/alumniMeet.service");
+const cloudnaryDeletion_1 = require("../utility/cloudnaryDeletion");
+const alumniMeet_dao_1 = require("../dao/alumniMeet.dao");
+const getAllAlumni = async (req, res, next) => {
     try {
-        res.status(200).json(await getAllAlumniListService());
+        res.status(200).json(await (0, alumniMeet_service_1.getAllAlumniListService)());
     }
     catch (err) {
         next(err);
     }
 };
-export const addNewAlumni = async (req, res, next) => {
+exports.getAllAlumni = getAllAlumni;
+const addNewAlumni = async (req, res, next) => {
     try {
         const data = req.body;
         const file = req.file;
@@ -24,14 +28,15 @@ export const addNewAlumni = async (req, res, next) => {
             ...data, careerTimeline: parsedCareerTimeline, achievements: parsedAchievements,
             ...(profilePicUrl && { profilePic: profilePicUrl, fileName }),
         };
-        const newAlumni = await addNewAlumniService(alumniInput);
+        const newAlumni = await (0, alumniMeet_service_1.addNewAlumniService)(alumniInput);
         return res.status(200).json({ success: true, message: "Alumni added successfully", data: newAlumni });
     }
     catch (err) {
         next(err);
     }
 };
-export const updateAlumni = async (req, res, next) => {
+exports.addNewAlumni = addNewAlumni;
+const updateAlumni = async (req, res, next) => {
     try {
         const id = req.params.id;
         const imageFile = req.file;
@@ -44,16 +49,17 @@ export const updateAlumni = async (req, res, next) => {
             ...req.body, achievements: req.body.achievement,
             ...(profilePicUrl && { profilePic: profilePicUrl, fileName }),
         };
-        res.status(200).json(await updateAlumniService(id, data));
+        res.status(200).json(await (0, alumniMeet_service_1.updateAlumniService)(id, data));
     }
     catch (error) {
         next(error);
     }
 };
-export const deleteAlumni = async (req, res, next) => {
+exports.updateAlumni = updateAlumni;
+const deleteAlumni = async (req, res, next) => {
     try {
-        const deletedAlumni = await deleteAlumniService(req.params.id);
-        await deleteFromCloudinary(deletedAlumni.fileName);
+        const deletedAlumni = await (0, alumniMeet_service_1.deleteAlumniService)(req.params.id);
+        await (0, cloudnaryDeletion_1.deleteFromCloudinary)(deletedAlumni.fileName);
         res.status(200).json({ success: true, message: "Alumni deleted successfully.", data: deletedAlumni });
     }
     catch (err) {
@@ -61,7 +67,8 @@ export const deleteAlumni = async (req, res, next) => {
         next(err);
     }
 };
-export const addNewAlumniMeet = async (req, res, next) => {
+exports.deleteAlumni = deleteAlumni;
+const addNewAlumniMeet = async (req, res, next) => {
     try {
         const data = req.body;
         const parsedClassJoined = JSON.parse(data.classJoined);
@@ -74,7 +81,7 @@ export const addNewAlumniMeet = async (req, res, next) => {
             ...data, classJoined: parsedClassJoined, time: parsedTime,
             media: { images, videoLink: video, videoId },
         };
-        const newAlumniMeet = await createNewAlumniMeetService(newData);
+        const newAlumniMeet = await (0, alumniMeet_service_1.createNewAlumniMeetService)(newData);
         res.status(200).json({ success: true, message: "Alumni Meet added successfully", data: newAlumniMeet });
     }
     catch (err) {
@@ -82,16 +89,18 @@ export const addNewAlumniMeet = async (req, res, next) => {
         next(err);
     }
 };
-export const getAllAlumniMeets = async (req, res, next) => {
+exports.addNewAlumniMeet = addNewAlumniMeet;
+const getAllAlumniMeets = async (req, res, next) => {
     try {
-        const alumniMeets = await getAllAlumniMeetsService();
+        const alumniMeets = await (0, alumniMeet_service_1.getAllAlumniMeetsService)();
         res.status(200).json({ success: true, message: "All Alumni Meets", data: alumniMeets });
     }
     catch (err) {
         next(err);
     }
 };
-export const updateAlumniMeet = async (req, res, next) => {
+exports.getAllAlumniMeets = getAllAlumniMeets;
+const updateAlumniMeet = async (req, res, next) => {
     try {
         const data = req.body;
         const parsedClassJoined = JSON.parse(data.classJoined);
@@ -105,8 +114,8 @@ export const updateAlumniMeet = async (req, res, next) => {
         const talkImages = images.length > 0 && images;
         const deleteImagesIds = req.body.deleteImagesIds || [];
         if (deleteImagesIds.length > 0)
-            await deleteFromCloudinary(deleteImagesIds);
-        const updatedAlumniMeet = await updateAlumniMeetService(id, newData, talkImages, talkVideo, req.body.deleteImages || []);
+            await (0, cloudnaryDeletion_1.deleteFromCloudinary)(deleteImagesIds);
+        const updatedAlumniMeet = await (0, alumniMeet_service_1.updateAlumniMeetService)(id, newData, talkImages, talkVideo, req.body.deleteImages || []);
         res.status(200).json({ success: true, message: "Alumni Meet updated successfully", data: updatedAlumniMeet });
     }
     catch (err) {
@@ -114,14 +123,15 @@ export const updateAlumniMeet = async (req, res, next) => {
         next(err);
     }
 };
-export const updateMeetMedia = async (req, res, next) => {
+exports.updateAlumniMeet = updateAlumniMeet;
+const updateMeetMedia = async (req, res, next) => {
     try {
         const id = req.params.id;
         const Files = req.files;
         const images = Files?.images?.map((file) => ({ image: file.path, imageId: file.filename })) || [];
         const video = Files?.video?.[0]?.path || "";
         const videoId = Files?.video?.[0]?.filename || "";
-        const updatedMeet = await updateMeetMediaService(images, video, videoId, id);
+        const updatedMeet = await (0, alumniMeet_service_1.updateMeetMediaService)(images, video, videoId, id);
         res.status(200).json({ success: true, message: "Alumni Meet updated successfully", data: updatedMeet });
     }
     catch (err) {
@@ -129,12 +139,13 @@ export const updateMeetMedia = async (req, res, next) => {
         next(err);
     }
 };
-export const deleteMeetMedia = async (req, res, next) => {
+exports.updateMeetMedia = updateMeetMedia;
+const deleteMeetMedia = async (req, res, next) => {
     try {
         const imageIds = JSON.parse(req.body.imageIds);
         if (imageIds.length > 0)
-            await deleteFromCloudinary(imageIds);
-        const updatedMeet = await deleteMeetMediaService(imageIds, req.params.id);
+            await (0, cloudnaryDeletion_1.deleteFromCloudinary)(imageIds);
+        const updatedMeet = await (0, alumniMeet_service_1.deleteMeetMediaService)(imageIds, req.params.id);
         res.status(200).json({ success: true, message: "Alumni Meet updated successfully", data: updatedMeet });
     }
     catch (err) {
@@ -142,15 +153,16 @@ export const deleteMeetMedia = async (req, res, next) => {
         next(err);
     }
 };
-export const deleteAlumniMeet = async (req, res, next) => {
+exports.deleteMeetMedia = deleteMeetMedia;
+const deleteAlumniMeet = async (req, res, next) => {
     try {
-        const deletedAlumniMeet = await deleteAlumniMeetService(req.params.id);
+        const deletedAlumniMeet = await (0, alumniMeet_service_1.deleteAlumniMeetService)(req.params.id);
         const imagesIds = deletedAlumniMeet?.media?.images.map((image) => image.imageId);
         const videoId = deletedAlumniMeet?.media?.videoId;
         if (imagesIds)
-            await deleteFromCloudinary(imagesIds);
+            await (0, cloudnaryDeletion_1.deleteFromCloudinary)(imagesIds);
         if (videoId)
-            await deleteFromCloudinary([videoId], 'video');
+            await (0, cloudnaryDeletion_1.deleteFromCloudinary)([videoId], 'video');
         res.status(200).json({ success: true, message: "Alumni Meet deleted successfully" });
     }
     catch (err) {
@@ -158,9 +170,10 @@ export const deleteAlumniMeet = async (req, res, next) => {
         next(err);
     }
 };
-export const getMeetsOnFrontend = async (req, res, next) => {
+exports.deleteAlumniMeet = deleteAlumniMeet;
+const getMeetsOnFrontend = async (req, res, next) => {
     try {
-        const meets = await getMeetsOnFrontendDao(req.params.type);
+        const meets = await (0, alumniMeet_dao_1.getMeetsOnFrontendDao)(req.params.type);
         res.status(200).json(meets);
     }
     catch (err) {
@@ -168,18 +181,20 @@ export const getMeetsOnFrontend = async (req, res, next) => {
         next(err);
     }
 };
-export const getSomeRandomAlumni = async (req, res, next) => {
+exports.getMeetsOnFrontend = getMeetsOnFrontend;
+const getSomeRandomAlumni = async (req, res, next) => {
     try {
-        res.status(200).json(await getRandomAlumniDao(4));
+        res.status(200).json(await (0, alumniMeet_dao_1.getRandomAlumniDao)(4));
     }
     catch (err) {
         next(err);
     }
 };
-export const addNewFeedback = async (req, res, next) => {
+exports.getSomeRandomAlumni = getSomeRandomAlumni;
+const addNewFeedback = async (req, res, next) => {
     try {
         const { comment, name, company } = req.body;
-        const newFeedback = await addNewFeedbackService(name, company, comment);
+        const newFeedback = await (0, alumniMeet_service_1.addNewFeedbackService)(name, company, comment);
         if (newFeedback)
             res.status(200).json({ status: "succes", feeback: newFeedback });
     }
@@ -188,9 +203,10 @@ export const addNewFeedback = async (req, res, next) => {
         next(err);
     }
 };
-export const fetchRandomFeedbacks = async (req, res, next) => {
+exports.addNewFeedback = addNewFeedback;
+const fetchRandomFeedbacks = async (req, res, next) => {
     try {
-        const feedbacks = await getRandomFeedbacksDao(3);
+        const feedbacks = await (0, alumniMeet_dao_1.getRandomFeedbacksDao)(3);
         res.status(200).json({ status: "success", feedbacks });
     }
     catch (err) {
@@ -198,24 +214,27 @@ export const fetchRandomFeedbacks = async (req, res, next) => {
         next(err);
     }
 };
-export const getTalksPagination = async (req, res, next) => {
+exports.fetchRandomFeedbacks = fetchRandomFeedbacks;
+const getTalksPagination = async (req, res, next) => {
     try {
         const page = parseInt(req.query.page) || 1;
         const limit = parseInt(req.query.limit) || 3;
-        const data = await getTalksPaginationService(page, limit);
+        const data = await (0, alumniMeet_service_1.getTalksPaginationService)(page, limit);
         return res.status(200).json({ status: "success", ...data });
     }
     catch (err) {
         next(err);
     }
 };
-export const feedbackPagination = async (req, res, next) => {
+exports.getTalksPagination = getTalksPagination;
+const feedbackPagination = async (req, res, next) => {
     try {
         const { page, limit } = req.query;
-        const data = await feedbackPaginationService(Number(page), Number(limit));
+        const data = await (0, alumniMeet_service_1.feedbackPaginationService)(Number(page), Number(limit));
         return res.status(200).json({ status: "success", ...data });
     }
     catch (err) {
         next(err);
     }
 };
+exports.feedbackPagination = feedbackPagination;

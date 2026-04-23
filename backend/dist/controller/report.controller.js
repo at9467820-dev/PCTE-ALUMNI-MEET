@@ -1,10 +1,16 @@
-import { getAllMeetsForReportDao } from "../dao/alumniMeet.dao";
-import excelJs from "exceljs";
-export const talkReport = async (req, res, next) => {
+"use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.talkReport = void 0;
+const alumniMeet_dao_1 = require("../dao/alumniMeet.dao");
+const exceljs_1 = __importDefault(require("exceljs"));
+const talkReport = async (req, res, next) => {
     try {
         const { selectedFields } = req.body;
-        const talks = await getAllMeetsForReportDao();
-        const workbook = new excelJs.Workbook();
+        const talks = await (0, alumniMeet_dao_1.getAllMeetsForReportDao)();
+        const workbook = new exceljs_1.default.Workbook();
         const workSheet = workbook.addWorksheet("Alumni Talks");
         const columns = selectedFields.map((field) => ({
             header: field === "title" ? "Talk Title" : field === "description" ? "Talk Description" : field === "time" ? "Talk Date" : field === "location" ? "venue" : field === "organizedBy" ? "Organizer" : field === 'classJoined' ? "classes Joined" : field.charAt(0).toUpperCase() + field.slice(1),
@@ -76,3 +82,4 @@ export const talkReport = async (req, res, next) => {
         next();
     }
 };
+exports.talkReport = talkReport;

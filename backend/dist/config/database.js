@@ -1,17 +1,20 @@
-import Database from 'better-sqlite3';
-import path from 'path';
-import { fileURLToPath } from 'url';
-import fs from 'fs';
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const dataDir = path.join(__dirname, '..', '..', 'data');
-if (!fs.existsSync(dataDir)) {
-    fs.mkdirSync(dataDir, { recursive: true });
+"use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.initDB = initDB;
+const better_sqlite3_1 = __importDefault(require("better-sqlite3"));
+const path_1 = __importDefault(require("path"));
+const fs_1 = __importDefault(require("fs"));
+const dataDir = path_1.default.join(__dirname, '..', '..', 'data');
+if (!fs_1.default.existsSync(dataDir)) {
+    fs_1.default.mkdirSync(dataDir, { recursive: true });
 }
-const dbPath = path.join(dataDir, 'alumni.db');
-const db = new Database(dbPath);
+const dbPath = path_1.default.join(dataDir, 'alumni.db');
+const db = new better_sqlite3_1.default(dbPath);
 db.pragma('journal_mode = WAL');
-export function initDB() {
+function initDB() {
     db.exec(`
     CREATE TABLE IF NOT EXISTS alumni (
       _id TEXT PRIMARY KEY,
@@ -74,4 +77,4 @@ export function initDB() {
     db.prepare("DELETE FROM blacklist WHERE datetime(expiresAt) < datetime('now')").run();
     console.log("SQLite database initialized successfully");
 }
-export default db;
+exports.default = db;

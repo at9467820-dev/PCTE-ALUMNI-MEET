@@ -1,9 +1,15 @@
-import cloudinary from "../config/cloudnary";
-export const deleteFromCloudinary = async (media, type = "image") => {
+"use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.deleteFromCloudinary = void 0;
+const cloudnary_1 = __importDefault(require("../config/cloudnary"));
+const deleteFromCloudinary = async (media, type = "image") => {
     try {
         const mediaArray = Array.isArray(media) ? media : [media];
         const deletedPromises = mediaArray.map((publicId) => {
-            return cloudinary.uploader.destroy(publicId, {
+            return cloudnary_1.default.uploader.destroy(publicId, {
                 resource_type: type,
             });
         });
@@ -16,3 +22,4 @@ export const deleteFromCloudinary = async (media, type = "image") => {
         throw new Error("Failed to delete one or more media files from Cloudinary.");
     }
 };
+exports.deleteFromCloudinary = deleteFromCloudinary;

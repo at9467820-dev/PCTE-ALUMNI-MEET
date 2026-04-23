@@ -1,44 +1,57 @@
+"use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.InternalServerError = exports.ValidationError = exports.ConflictError = exports.BadRequestError = exports.NotFoundError = exports.ForbiddenError = exports.UnauthorizedError = void 0;
 // customErrors.ts
-import ApiError from "./error.js"; // or "./error.ts" if you're importing directly in TS
+const error_1 = __importDefault(require("./error"));
 // 401 Unauthorized
-export class UnauthorizedError extends ApiError {
+class UnauthorizedError extends error_1.default {
     constructor(message = "Unauthorized") {
         super(message, 401);
     }
 }
+exports.UnauthorizedError = UnauthorizedError;
 // 403 Forbidden
-export class ForbiddenError extends ApiError {
+class ForbiddenError extends error_1.default {
     constructor(message = "Forbidden") {
         super(message, 403);
     }
 }
+exports.ForbiddenError = ForbiddenError;
 // 404 Not Found
-export class NotFoundError extends ApiError {
+class NotFoundError extends error_1.default {
     constructor(message = "Not Found") {
         super(message, 404);
     }
 }
+exports.NotFoundError = NotFoundError;
 // 400 Bad Request
-export class BadRequestError extends ApiError {
+class BadRequestError extends error_1.default {
     constructor(message = "Bad Request") {
         super(message, 400);
     }
 }
+exports.BadRequestError = BadRequestError;
 // 409 Conflict
-export class ConflictError extends ApiError {
+class ConflictError extends error_1.default {
     constructor(message = "Conflict") {
         super(message, 409);
     }
 }
+exports.ConflictError = ConflictError;
 // 422 Unprocessable Entity
-export class ValidationError extends ApiError {
+class ValidationError extends error_1.default {
     constructor(message = "Validation Error") {
         super(message, 422);
     }
 }
+exports.ValidationError = ValidationError;
 // 500 Internal Server Error
-export class InternalServerError extends ApiError {
+class InternalServerError extends error_1.default {
     constructor(message = "Internal Server Error") {
         super(message, 500, false); // Not always operational
     }
 }
+exports.InternalServerError = InternalServerError;

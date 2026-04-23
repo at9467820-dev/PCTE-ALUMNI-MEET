@@ -1,3 +1,5 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
 class apiError extends Error {
     constructor(message = "something went wrong", statusCode = 500, isOperational = true) {
         super(message);
@@ -8,4 +10,4 @@ class apiError extends Error {
         Error.captureStackTrace(this, this.constructor);
     }
 }
-export default apiError;
+exports.default = apiError;

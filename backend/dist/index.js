@@ -1,16 +1,53 @@
-import dotenv from "dotenv";
-dotenv.config();
-import express from "express";
-import path from "path";
-import { fileURLToPath } from "url";
-import { initDB } from './config/database';
-import cors from 'cors';
-import cookieParser from 'cookie-parser';
-import globalErrorHandler from "./utility/globalError";
-import alumniMeetRoute from './routes/alumniMeet.route';
-import adminAuthRoute from './routes/auth.route';
-import reportRoute from './routes/report.route';
-import alumniMeetCron, { alumniTalkStatus } from './utility/scheduledTask';
+"use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+const dotenv_1 = __importDefault(require("dotenv"));
+dotenv_1.default.config();
+const express_1 = __importDefault(require("express"));
+const path_1 = __importDefault(require("path"));
+const database_1 = require("./config/database");
+const cors_1 = __importDefault(require("cors"));
+const cookie_parser_1 = __importDefault(require("cookie-parser"));
+const globalError_1 = __importDefault(require("./utility/globalError"));
+const alumniMeet_route_1 = __importDefault(require("./routes/alumniMeet.route"));
+const auth_route_1 = __importDefault(require("./routes/auth.route"));
+const report_route_1 = __importDefault(require("./routes/report.route"));
+const scheduledTask_1 = __importStar(require("./utility/scheduledTask"));
 // Environment validation
 function requireEnv(key) {
     const value = process.env[key];
@@ -24,16 +61,14 @@ requireEnv("JWT_SECRET");
 requireEnv("CLOUDINARY_NAME");
 requireEnv("CLOUDINARY_API_KEY");
 requireEnv("CLOUDINARY_SECRET");
-const app = express();
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+const app = (0, express_1.default)();
 // Initialize SQLite database FIRST
-initDB();
-app.use(cookieParser());
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-app.use("/public", express.static(path.join(__dirname, "../public")));
-app.use(cors({
+(0, database_1.initDB)();
+app.use((0, cookie_parser_1.default)());
+app.use(express_1.default.json());
+app.use(express_1.default.urlencoded({ extended: true }));
+app.use("/public", express_1.default.static(path_1.default.join(__dirname, "../public")));
+app.use((0, cors_1.default)({
     origin: [
         "http://localhost:5173",
         "http://localhost:5175",
@@ -43,13 +78,13 @@ app.use(cors({
     ],
     credentials: process.env.NODE_ENV === "production" ? true : true
 }));
-app.use("/", alumniMeetRoute);
-app.use("/admin", adminAuthRoute);
-app.use("/report", reportRoute);
-app.use(globalErrorHandler);
+app.use("/", alumniMeet_route_1.default);
+app.use("/admin", auth_route_1.default);
+app.use("/report", report_route_1.default);
+app.use(globalError_1.default);
 // Start cron job and run initial status update AFTER DB is ready
-alumniMeetCron.start();
-alumniTalkStatus();
+scheduledTask_1.default.start();
+(0, scheduledTask_1.alumniTalkStatus)();
 const PORT = Number(process.env.PORT) || 3000;
 app.listen(PORT, () => {
     console.log(`listening on port ${PORT}`);

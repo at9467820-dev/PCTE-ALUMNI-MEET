@@ -3,7 +3,6 @@ dotenv.config();
 
 import express, { Application } from "express";
 import path from "path";
-import { fileURLToPath } from "url";
 import { initDB } from './config/database';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
@@ -29,9 +28,6 @@ requireEnv("CLOUDINARY_API_KEY");
 requireEnv("CLOUDINARY_SECRET");
 
 const app: Application = express();
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 
 // Initialize SQLite database FIRST
 initDB();
