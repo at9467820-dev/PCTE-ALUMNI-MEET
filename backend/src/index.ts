@@ -4,7 +4,6 @@ dotenv.config();
 import express, { Application } from "express";
 import path from "path";
 import { fileURLToPath } from "url";
-import { env } from './config/env';
 import { initDB } from './config/database';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
@@ -13,6 +12,21 @@ import alumniMeetRoute from './routes/alumniMeet.route';
 import adminAuthRoute from './routes/auth.route';
 import reportRoute from './routes/report.route';
 import alumniMeetCron, { alumniTalkStatus } from './utility/scheduledTask';
+
+// Environment validation
+function requireEnv(key: string): string {
+  const value = process.env[key];
+  if (!value) {
+    throw new Error(`Environment variable ${key} is required but was not provided.`);
+  }
+  return value;
+}
+
+// Validate required environment variables
+requireEnv("JWT_SECRET");
+requireEnv("CLOUDINARY_NAME");
+requireEnv("CLOUDINARY_API_KEY");
+requireEnv("CLOUDINARY_SECRET");
 
 const app: Application = express();
 
@@ -35,7 +49,7 @@ app.use(
       "https://pcte-alumni-talk-dep-ready-7smeq2pj4-ankits-projects-0633ce92.vercel.app",
       "http://192.168.29.104:5173"
     ],
-    credentials: true
+    credentials: truprocess.e
   })
 );
 
