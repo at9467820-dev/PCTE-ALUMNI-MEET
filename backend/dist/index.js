@@ -56,14 +56,12 @@ function requireEnv(key) {
     }
     return value;
 }
-// Validate required environment variables
+requireEnv("MONGO_URI");
 requireEnv("JWT_SECRET");
 requireEnv("CLOUDINARY_NAME");
 requireEnv("CLOUDINARY_API_KEY");
 requireEnv("CLOUDINARY_SECRET");
 const app = (0, express_1.default)();
-// Initialize SQLite database FIRST
-(0, database_1.initDB)();
 app.use((0, cookie_parser_1.default)());
 app.use(express_1.default.json());
 app.use(express_1.default.urlencoded({ extended: true }));
@@ -76,16 +74,24 @@ app.use((0, cors_1.default)({
         "https://pcte-alumni-talk-dep-ready-7smeq2pj4-ankits-projects-0633ce92.vercel.app",
         "http://192.168.29.104:5173"
     ],
-    credentials: process.env.NODE_ENV === "production" ? true : true
+    credentials: true
 }));
 app.use("/", alumniMeet_route_1.default);
 app.use("/admin", auth_route_1.default);
 app.use("/report", report_route_1.default);
 app.use(globalError_1.default);
-// Start cron job and run initial status update AFTER DB is ready
-scheduledTask_1.default.start();
-(0, scheduledTask_1.alumniTalkStatus)();
 const PORT = Number(process.env.PORT) || 3000;
-app.listen(PORT, () => {
-    console.log(`listening on port ${PORT}`);
+// Connect to MongoDB first, then start server
+(0, database_1.initDB)()
+    .then(() => {
+    app.listen(PORT, () => {
+        console.log(`Server listening on port ${PORT}`);
+    });
+    // Start cron job AFTER DB is connected
+    scheduledTask_1.default.start();
+    (0, scheduledTask_1.alumniTalkStatus)();
+})
+    .catch((err) => {
+    console.error("Failed to connect to MongoDB:", err.message);
+    process.exit(1);
 });

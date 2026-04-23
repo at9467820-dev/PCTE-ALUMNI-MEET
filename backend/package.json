@@ -15,10 +15,8 @@
     "node": ">=18.0.0"
   },
   "dependencies": {
-    "@types/better-sqlite3": "^7.6.13",
     "axios": "^1.11.0",
     "bcryptjs": "^3.0.2",
-    "better-sqlite3": "^12.8.0",
     "cloudinary": "^1.41.3",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
@@ -28,6 +26,7 @@
     "form-data": "^4.0.4",
     "jsonwebtoken": "^9.0.2",
     "mime-types": "^3.0.1",
+    "mongoose": "^9.5.0",
     "multer": "^2.0.2",
     "multer-storage-cloudinary": "^4.0.0",
     "node-cron": "^4.2.1"
@@ -39,6 +38,7 @@
     "@types/express": "^5.0.3",
     "@types/jsonwebtoken": "^9.0.10",
     "@types/mime-types": "^3.0.1",
+    "@types/mongoose": "^5.11.96",
     "@types/multer": "^2.0.0",
     "@types/node": "^24.1.0",
     "tsx": "^4.20.3",

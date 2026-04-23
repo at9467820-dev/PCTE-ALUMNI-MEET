@@ -1,225 +1,277 @@
-import db from '../config/database';
-import { randomUUID } from 'crypto';
+import { AlumniModel, AlumniMeetModel, FeedbackModel } from '../config/models';
 import { AlumniInput, AlumniMeetInput } from '../types/interface';
 import { Alumni, alumniMeetDocument, feedback } from '../types/model.interface';
 
-function parseAlumniRow(row: any): Alumni {
-  if (!row) return row;
-  return { ...row, careerTimeline: JSON.parse(row.careerTimeline || '[]'), achievements: JSON.parse(row.achievements || '[]') };
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+function toPlain(doc: any) {
+  if (!doc) return doc;
+  const obj = doc.toObject ? doc.toObject({ versionKey: false }) : { ...doc };
+  if (obj._id) obj._id = obj._id.toString();
+  return obj;
 }
 
-function parseMeetRow(row: any): alumniMeetDocument {
-  if (!row) return row;
-  return {
-    ...row,
-    classJoined: JSON.parse(row.classJoined || '[]'),
-    alumni: JSON.parse(row.alumni || '[]'),
-    media: { images: JSON.parse(row.media_images || '[]'), videoLink: row.media_videoLink || '', videoId: row.media_videoId || '' },
-  };
-}
-
-function populateMeetAlumni(meet: alumniMeetDocument): alumniMeetDocument {
-  const alumniIds = meet.alumni as string[];
-  if (Array.isArray(alumniIds) && alumniIds.length > 0) {
-    const placeholders = alumniIds.map(() => '?').join(',');
-    const rows = db.prepare(`SELECT * FROM alumni WHERE _id IN (${placeholders})`).all(...alumniIds);
-    meet.alumni = (rows as any[]).map(parseAlumniRow);
-  } else {
-    meet.alumni = [];
+function toMeet(doc: any): alumniMeetDocument {
+  if (!doc) return doc;
+  const obj = doc.toObject ? doc.toObject({ versionKey: false }) : { ...doc };
+  obj._id = obj._id?.toString();
+  if (Array.isArray(obj.alumni)) {
+    obj.alumni = obj.alumni.map((a: any) =>
+      a && typeof a === 'object' && a._id ? { ...a, _id: a._id.toString() } : a?.toString?.() ?? a
+    );
   }
-  return meet;
+  return obj;
 }
 
+// ─── Alumni DAOs ──────────────────────────────────────────────────────────────
 export const getAllAlumniDao = async (): Promise<Alumni[]> => {
-  const rows = db.prepare('SELECT * FROM alumni ORDER BY createdAt DESC').all();
-  return (rows as any[]).map(parseAlumniRow);
+  const docs = await AlumniModel.find().sort({ createdAt: -1 }).lean();
+  return docs.map((d: any) => ({ ...d, _id: d._id.toString() })) as Alumni[];
 };
 
 export const getAlumniById = async (id: string) => {
-  const row = db.prepare('SELECT * FROM alumni WHERE _id = ?').get(id);
-  if (!row) throw new Error('Alumni not found');
-  return parseAlumniRow(row);
+  const doc = await AlumniModel.findById(id).lean();
+  if (!doc) throw new Error('Alumni not found');
+  return { ...(doc as any), _id: (doc as any)._id.toString() } as Alumni;
 };
 
 export const addNewAlumniDao = async (data: AlumniInput): Promise<Alumni> => {
-  const _id = randomUUID();
-  const now = new Date().toISOString();
   try {
-    db.prepare(`INSERT INTO alumni (_id,name,profilePic,fileName,batch,linkedIn,email,currentCompany,currentRole,careerTimeline,achievements,quote,createdAt,updatedAt) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).run(
-      _id, data.name, data.profilePic?.toString() || '', data.fileName?.toString() || '', data.batch, data.linkedIn || '', data.email, data.currentCompany, data.currentRole,
-      JSON.stringify(data.careerTimeline || []), JSON.stringify(data.achievements || []), data.quote || '', now, now
-    );
-    return parseAlumniRow(db.prepare('SELECT * FROM alumni WHERE _id = ?').get(_id));
+    const doc = await AlumniModel.create({
+      name: data.name,
+      profilePic: data.profilePic?.toString() || '',
+      fileName: data.fileName?.toString() || '',
+      batch: data.batch,
+      linkedIn: data.linkedIn || '',
+      email: data.email,
+      currentCompany: data.currentCompany,
+      currentRole: data.currentRole,
+      careerTimeline: data.careerTimeline || [],
+      achievements: data.achievements || [],
+      quote: data.quote || '',
+    });
+    return { ...toPlain(doc), _id: doc._id.toString() } as Alumni;
   } catch (err: any) {
-    if (err.message?.includes('UNIQUE constraint failed: alumni.email')) throw new Error(`Duplicate email found: ${data.email}`);
+    if (err.code === 11000) throw new Error(`Duplicate email found: ${data.email}`);
     throw err;
   }
 };
 
 export const checkAlumniByIdDao = async (id: string): Promise<boolean> => {
-  return Boolean(db.prepare('SELECT _id FROM alumni WHERE _id = ?').get(id));
+  const doc = await AlumniModel.exists({ _id: id });
+  return Boolean(doc);
 };
 
 export const checkAlumniMeetsDaoByAlumniId = async (id: string): Promise<boolean> => {
-  const rows = db.prepare('SELECT alumni FROM alumniMeets').all() as any[];
-  for (const row of rows) {
-    const ids = JSON.parse(row.alumni || '[]');
-    if (ids.includes(id)) return true;
-  }
-  return false;
+  const doc = await AlumniMeetModel.exists({ alumni: id });
+  return Boolean(doc);
 };
 
 export const checkAlumniMeetsDaoByid = async (id: string): Promise<boolean> => {
-  return Boolean(db.prepare('SELECT _id FROM alumniMeets WHERE _id = ?').get(id));
+  const doc = await AlumniMeetModel.exists({ _id: id });
+  return Boolean(doc);
 };
 
 export const deleteAlumniDao = async (id: string): Promise<Alumni | null> => {
-  const existing = db.prepare('SELECT * FROM alumni WHERE _id = ?').get(id) as any;
-  if (!existing) throw new Error('Alumni not found');
-  db.prepare('DELETE FROM alumni WHERE _id = ?').run(id);
-  return parseAlumniRow(existing);
+  const doc = await AlumniModel.findByIdAndDelete(id).lean();
+  if (!doc) throw new Error('Alumni not found');
+  return { ...(doc as any), _id: (doc as any)._id.toString() } as Alumni;
 };
 
 export const findAlumniByIdDao = async (id: string): Promise<Alumni | null> => {
-  const row = db.prepare('SELECT * FROM alumni WHERE _id = ?').get(id) as any;
-  return row ? parseAlumniRow(row) : null;
+  const doc = await AlumniModel.findById(id).lean();
+  if (!doc) return null;
+  return { ...(doc as any), _id: (doc as any)._id.toString() } as Alumni;
 };
 
 export const updateAlumniDao = async (id: string, data: AlumniInput): Promise<Alumni | null> => {
-  const now = new Date().toISOString();
-  const existing = db.prepare('SELECT * FROM alumni WHERE _id = ?').get(id) as any;
-  if (!existing) return null;
-  db.prepare(`UPDATE alumni SET name=?, profilePic=?, fileName=?, batch=?, linkedIn=?, email=?, currentCompany=?, currentRole=?, careerTimeline=?, achievements=?, quote=?, updatedAt=? WHERE _id=?`).run(
-    data.name || existing.name, data.profilePic ? String(data.profilePic) : existing.profilePic, data.fileName ? String(data.fileName) : existing.fileName,
-    data.batch || existing.batch, data.linkedIn !== undefined ? data.linkedIn : existing.linkedIn, data.email || existing.email,
-    data.currentCompany || existing.currentCompany, data.currentRole || existing.currentRole,
-    JSON.stringify(data.careerTimeline || JSON.parse(existing.careerTimeline)), JSON.stringify(data.achievements || JSON.parse(existing.achievements)),
-    data.quote !== undefined ? data.quote : existing.quote, now, id
-  );
-  return parseAlumniRow(db.prepare('SELECT * FROM alumni WHERE _id = ?').get(id));
+  const doc = await AlumniModel.findByIdAndUpdate(
+    id,
+    {
+      name: data.name,
+      profilePic: data.profilePic ? String(data.profilePic) : undefined,
+      fileName: data.fileName ? String(data.fileName) : undefined,
+      batch: data.batch,
+      linkedIn: data.linkedIn,
+      email: data.email,
+      currentCompany: data.currentCompany,
+      currentRole: data.currentRole,
+      careerTimeline: data.careerTimeline,
+      achievements: data.achievements,
+      quote: data.quote,
+    },
+    { new: true, runValidators: true }
+  ).lean();
+  if (!doc) return null;
+  return { ...(doc as any), _id: (doc as any)._id.toString() } as Alumni;
 };
 
+// ─── AlumniMeet DAOs ──────────────────────────────────────────────────────────
 export const createNewAlumniMeetDao = async (data: AlumniMeetInput): Promise<alumniMeetDocument> => {
-  const _id = randomUUID();
-  const now = new Date().toISOString();
   const alumniArray = Array.isArray(data.alumni) ? data.alumni : [data.alumni];
-  db.prepare(`INSERT INTO alumniMeets (_id,title,time,classJoined,organizedBy,location,alumni,media_images,media_videoLink,media_videoId,status,description,createdAt,updatedAt) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).run(
-    _id, data.title, new Date(data.time).toISOString(), JSON.stringify(data.classJoined || []), data.organizedBy, data.location,
-    JSON.stringify(alumniArray), JSON.stringify(data.media?.images || []), data.media?.videoLink || '', data.media?.videoId || '',
-    'Upcoming', data.description, now, now
-  );
-  return parseMeetRow(db.prepare('SELECT * FROM alumniMeets WHERE _id = ?').get(_id));
+  const doc = await AlumniMeetModel.create({
+    title: data.title,
+    time: new Date(data.time),
+    classJoined: data.classJoined || [],
+    organizedBy: data.organizedBy,
+    location: data.location,
+    alumni: alumniArray,
+    media: data.media || { images: [], videoLink: '', videoId: '' },
+    status: 'Upcoming',
+    description: data.description,
+  });
+  return toMeet(doc);
 };
 
 export const getAllAlumniMeetsDao = async () => {
-  const rows = db.prepare('SELECT * FROM alumniMeets ORDER BY createdAt DESC').all() as any[];
-  if (!rows || rows.length === 0) throw new Error('Alumni Meets not found');
-  return rows.map(parseMeetRow).map(populateMeetAlumni);
+  const docs = await AlumniMeetModel.find().sort({ createdAt: -1 }).populate('alumni').lean();
+  if (!docs || docs.length === 0) throw new Error('Alumni Meets not found');
+  return docs.map((d: any) => toMeet({ toObject: () => d }));
 };
 
-export const updateAlumniMeetDao = async (id: string, data: AlumniMeetInput, talkImages: any, talkVideo: any, deleteImages: string[]) => {
-  const existing = db.prepare('SELECT * FROM alumniMeets WHERE _id = ?').get(id) as any;
+export const updateAlumniMeetDao = async (
+  id: string, data: AlumniMeetInput,
+  talkImages: any, talkVideo: any, deleteImages: string[]
+) => {
+  const existing = await AlumniMeetModel.findById(id);
   if (!existing) throw new Error('Alumni Meet not found');
-  const now = new Date().toISOString();
-  const meet = parseMeetRow(existing);
-  const alumniArray = data.alumni ? (Array.isArray(data.alumni) ? data.alumni : [data.alumni]) : meet.alumni;
-  let imgs = meet.media.images || [];
+
+  const alumniArray = data.alumni
+    ? (Array.isArray(data.alumni) ? data.alumni : [data.alumni])
+    : existing.alumni;
+
+  let imgs: any[] = (existing.media?.images as any[]) || [];
   if (talkImages && Array.isArray(talkImages) && talkImages.length > 0) imgs = [...imgs, ...talkImages];
   if (deleteImages && deleteImages.length > 0) imgs = imgs.filter((img: any) => !deleteImages.includes(img.imageId));
-  let vLink = meet.media.videoLink || '', vId = meet.media.videoId || '';
+
+  let vLink = existing.media?.videoLink || '';
+  let vId = existing.media?.videoId || '';
   if (talkVideo && talkVideo.videoLink) { vLink = talkVideo.videoLink; vId = talkVideo.videoId; }
-  db.prepare(`UPDATE alumniMeets SET title=?,time=?,classJoined=?,organizedBy=?,location=?,alumni=?,media_images=?,media_videoLink=?,media_videoId=?,description=?,updatedAt=? WHERE _id=?`).run(
-    data.title || meet.title, data.time ? new Date(data.time).toISOString() : existing.time, JSON.stringify(data.classJoined || meet.classJoined),
-    data.organizedBy || meet.organizedBy, data.location || meet.location, JSON.stringify(alumniArray),
-    JSON.stringify(imgs), vLink, vId, data.description || meet.description, now, id
-  );
-  return parseMeetRow(db.prepare('SELECT * FROM alumniMeets WHERE _id = ?').get(id));
+
+  const updated = await AlumniMeetModel.findByIdAndUpdate(id, {
+    title: data.title || existing.title,
+    time: data.time ? new Date(data.time) : existing.time,
+    classJoined: data.classJoined || existing.classJoined,
+    organizedBy: data.organizedBy || existing.organizedBy,
+    location: data.location || existing.location,
+    alumni: alumniArray,
+    'media.images': imgs,
+    'media.videoLink': vLink,
+    'media.videoId': vId,
+    description: data.description || existing.description,
+  }, { new: true }).lean();
+
+  return toMeet({ toObject: () => updated });
 };
 
 export const updateMeetMediaDao = async (images: any[], video: string, videoId: string, id: string) => {
-  const existing = db.prepare('SELECT * FROM alumniMeets WHERE _id = ?').get(id) as any;
+  const existing = await AlumniMeetModel.findById(id);
   if (!existing) throw new Error('Alumni Meet not found');
-  const meet = parseMeetRow(existing);
-  const now = new Date().toISOString();
-  let imgs = meet.media.images || [];
+
+  const oldVideoId = existing.media?.videoId || '';
+  let imgs: any[] = (existing.media?.images as any[]) || [];
   if (images && images.length > 0) imgs = [...imgs, ...images];
-  let vLink = meet.media.videoLink || '', vId = meet.media.videoId || '';
-  const oldVideoId = vId;
+
+  let vLink = existing.media?.videoLink || '';
+  let vId = existing.media?.videoId || '';
   if (video) { vLink = video; vId = videoId; }
-  db.prepare(`UPDATE alumniMeets SET media_images=?,media_videoLink=?,media_videoId=?,updatedAt=? WHERE _id=?`).run(JSON.stringify(imgs), vLink, vId, now, id);
-  const updated = parseMeetRow(db.prepare('SELECT * FROM alumniMeets WHERE _id = ?').get(id));
-  (updated as any)._oldVideoId = oldVideoId;
-  return updated;
+
+  const updated = await AlumniMeetModel.findByIdAndUpdate(id, {
+    'media.images': imgs,
+    'media.videoLink': vLink,
+    'media.videoId': vId,
+  }, { new: true }).lean();
+
+  const result = toMeet({ toObject: () => updated }) as any;
+  result._oldVideoId = oldVideoId;
+  return result;
 };
 
 export const deleteMeetMediaDao = async (imageIds: string[], id: string) => {
-  const existing = db.prepare('SELECT * FROM alumniMeets WHERE _id = ?').get(id) as any;
+  const existing = await AlumniMeetModel.findById(id);
   if (!existing) throw new Error('Alumni Meet not found');
-  const meet = parseMeetRow(existing);
-  const now = new Date().toISOString();
-  const imgs = meet.media.images.filter((img: any) => !imageIds.includes(img.imageId));
-  db.prepare(`UPDATE alumniMeets SET media_images=?,updatedAt=? WHERE _id=?`).run(JSON.stringify(imgs), now, id);
-  return parseMeetRow(db.prepare('SELECT * FROM alumniMeets WHERE _id = ?').get(id));
+  const imgs = ((existing.media?.images as any[]) || []).filter((img: any) => !imageIds.includes(img.imageId));
+  const updated = await AlumniMeetModel.findByIdAndUpdate(id, { 'media.images': imgs }, { new: true }).lean();
+  return toMeet({ toObject: () => updated });
 };
 
 export const deleteAlumniMeetDao = async (id: string): Promise<alumniMeetDocument> => {
-  const existing = db.prepare('SELECT * FROM alumniMeets WHERE _id = ?').get(id) as any;
-  if (!existing) throw new Error('Deletion failed. Alumni Meet may have already been deleted.');
-  db.prepare('DELETE FROM alumniMeets WHERE _id = ?').run(id);
-  return parseMeetRow(existing);
+  const doc = await AlumniMeetModel.findByIdAndDelete(id).populate('alumni').lean();
+  if (!doc) throw new Error('Deletion failed. Alumni Meet may have already been deleted.');
+  return toMeet({ toObject: () => doc });
 };
 
 export const addFeedbackDao = async (name: string, company: string, comment: string): Promise<feedback> => {
-  const _id = randomUUID();
-  const now = new Date().toISOString();
   const avatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=random&color=fff&size=128&bold=true&rounded=true`;
-  db.prepare(`INSERT INTO feedback (_id,avatar,name,company,comment,createdAt,updatedAt) VALUES (?,?,?,?,?,?,?)`).run(_id, avatar, name, company, comment, now, now);
-  return db.prepare('SELECT * FROM feedback WHERE _id = ?').get(_id) as feedback;
+  const doc = await FeedbackModel.create({ avatar, name, company, comment });
+  return { ...toPlain(doc), _id: doc._id.toString() } as feedback;
 };
 
 export const getTalksPaginationDao = async (page: number, limit: number, now: Date) => {
   const skip = (page - 1) * limit;
-  const nowISO = now.toISOString();
-  const talks = db.prepare('SELECT * FROM alumniMeets WHERE time <= ? ORDER BY createdAt DESC LIMIT ? OFFSET ?').all(nowISO, limit, skip) as any[];
-  const totalRow = db.prepare('SELECT COUNT(*) as count FROM alumniMeets WHERE time <= ?').get(nowISO) as any;
-  const parsedTalks = talks.map(parseMeetRow).map(populateMeetAlumni);
-  return { talks: parsedTalks, total: totalRow.count };
+  const [talks, total] = await Promise.all([
+    AlumniMeetModel.find({ time: { $lte: now } }).sort({ createdAt: -1 }).skip(skip).limit(limit).populate('alumni').lean(),
+    AlumniMeetModel.countDocuments({ time: { $lte: now } }),
+  ]);
+  return { talks: talks.map((d: any) => toMeet({ toObject: () => d })), total };
 };
 
 export const feedbackPaginationDao = async (page: number, limit: number) => {
   const skip = (page - 1) * limit;
-  const feedbacks = db.prepare('SELECT * FROM feedback ORDER BY createdAt DESC LIMIT ? OFFSET ?').all(limit, skip) as feedback[];
-  const totalRow = db.prepare('SELECT COUNT(*) as count FROM feedback').get() as any;
-  return { feedbacks, total: totalRow.count };
+  const [feedbacks, total] = await Promise.all([
+    FeedbackModel.find().sort({ createdAt: -1 }).skip(skip).limit(limit).lean(),
+    FeedbackModel.countDocuments(),
+  ]);
+  return {
+    feedbacks: feedbacks.map((d: any) => ({ ...d, _id: d._id.toString() })) as feedback[],
+    total,
+  };
 };
 
-// New DAOs for controller functions that previously used Mongoose directly
 export const getRandomAlumniDao = async (count: number): Promise<Alumni[]> => {
-  const rows = db.prepare('SELECT * FROM alumni ORDER BY RANDOM() LIMIT ?').all(count) as any[];
-  return rows.map(parseAlumniRow);
+  const docs = await AlumniModel.aggregate([{ $sample: { size: count } }]);
+  return docs.map((d: any) => ({ ...d, _id: d._id.toString() })) as Alumni[];
 };
 
 export const getMeetsOnFrontendDao = async (type: string) => {
-  const nowISO = new Date().toISOString();
-  let rows: any[];
-  if (type === 'randomUpcomings') rows = db.prepare('SELECT * FROM alumniMeets WHERE time > ? ORDER BY RANDOM() LIMIT 1').all(nowISO) as any[];
-  else if (type === 'allUpcomings') rows = db.prepare('SELECT * FROM alumniMeets WHERE time > ?').all(nowISO) as any[];
-  else if (type === 'randomPast') rows = db.prepare('SELECT * FROM alumniMeets WHERE time < ? ORDER BY RANDOM() LIMIT 3').all(nowISO) as any[];
-  else if (type === 'allPast') rows = db.prepare('SELECT * FROM alumniMeets WHERE time < ?').all(nowISO) as any[];
-  else rows = [];
-  return rows.map(parseMeetRow).map(populateMeetAlumni);
+  const now = new Date();
+  let docs: any[] = [];
+  if (type === 'randomUpcomings')
+    docs = await AlumniMeetModel.aggregate([{ $match: { time: { $gt: now } } }, { $sample: { size: 1 } }]);
+  else if (type === 'allUpcomings')
+    docs = await AlumniMeetModel.find({ time: { $gt: now } }).lean();
+  else if (type === 'randomPast')
+    docs = await AlumniMeetModel.aggregate([{ $match: { time: { $lt: now } } }, { $sample: { size: 3 } }]);
+  else if (type === 'allPast')
+    docs = await AlumniMeetModel.find({ time: { $lt: now } }).lean();
+
+  // Populate alumni for aggregation results
+  const populated = await Promise.all(
+    docs.map(async (d: any) => {
+      if (d.alumni && d.alumni.length > 0) {
+        const { AlumniModel: AM } = await import('../config/models');
+        const alumniDocs = await AM.find({ _id: { $in: d.alumni } }).lean();
+        d.alumni = alumniDocs.map((a: any) => ({ ...a, _id: a._id.toString() }));
+      }
+      return toMeet({ toObject: () => d });
+    })
+  );
+  return populated;
 };
 
 export const getRandomFeedbacksDao = async (count: number) => {
-  return db.prepare('SELECT * FROM feedback ORDER BY RANDOM() LIMIT ?').all(count) as feedback[];
+  const docs = await FeedbackModel.aggregate([{ $sample: { size: count } }]);
+  return docs.map((d: any) => ({ ...d, _id: d._id.toString() })) as feedback[];
 };
 
 export const getAllMeetsForReportDao = async () => {
-  const rows = db.prepare('SELECT * FROM alumniMeets ORDER BY createdAt ASC').all() as any[];
-  return rows.map(parseMeetRow).map(populateMeetAlumni);
+  const docs = await AlumniMeetModel.find().sort({ createdAt: 1 }).populate('alumni').lean();
+  return docs.map((d: any) => toMeet({ toObject: () => d }));
 };
 
 export const updateMeetStatusesDao = async () => {
-  const nowISO = new Date().toISOString();
-  db.prepare("UPDATE alumniMeets SET status='Completed' WHERE time < ? AND status IN ('Upcoming','Ongoing')").run(nowISO);
+  const now = new Date();
+  await AlumniMeetModel.updateMany(
+    { time: { $lt: now }, status: { $in: ['Upcoming', 'Ongoing'] } },
+    { $set: { status: 'Completed' } }
+  );
 };

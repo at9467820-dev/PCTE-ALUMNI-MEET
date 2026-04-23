@@ -21,16 +21,13 @@ function requireEnv(key: string): string {
   return value;
 }
 
-// Validate required environment variables
+requireEnv("MONGO_URI");
 requireEnv("JWT_SECRET");
 requireEnv("CLOUDINARY_NAME");
 requireEnv("CLOUDINARY_API_KEY");
 requireEnv("CLOUDINARY_SECRET");
 
 const app: Application = express();
-
-// Initialize SQLite database FIRST
-initDB();
 
 app.use(cookieParser());
 app.use(express.json());
@@ -45,7 +42,7 @@ app.use(
       "https://pcte-alumni-talk-dep-ready-7smeq2pj4-ankits-projects-0633ce92.vercel.app",
       "http://192.168.29.104:5173"
     ],
-    credentials: process.env.NODE_ENV === "production" ? true : true
+    credentials: true
   })
 );
 
@@ -55,11 +52,20 @@ app.use("/report", reportRoute);
 
 app.use(globalErrorHandler);
 
-// Start cron job and run initial status update AFTER DB is ready
-alumniMeetCron.start();
-alumniTalkStatus();
-
 const PORT = Number(process.env.PORT) || 3000;
-app.listen(PORT, () => {
-  console.log(`listening on port ${PORT}`);
-});
+
+// Connect to MongoDB first, then start server
+initDB()
+  .then(() => {
+    app.listen(PORT, () => {
+      console.log(`Server listening on port ${PORT}`);
+    });
+
+    // Start cron job AFTER DB is connected
+    alumniMeetCron.start();
+    alumniTalkStatus();
+  })
+  .catch((err) => {
+    console.error("Failed to connect to MongoDB:", err.message);
+    process.exit(1);
+  });
