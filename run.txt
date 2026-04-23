@@ -1,0 +1,42 @@
+admin@pcte.edu
+admin1234
+
+
+cd backend
+npm run dev
+
+
+cd reactFrontend
+npm run dev
+
+Open your first terminal and navigate to your project's backend folder:
+bashq
+
+cd "c:\Users\HP\OneDrive\Attachments\Desktop\PCTE-alumni-talk-depReady-main\backend"
+Start the development server:
+bash
+npm run dev
+(You should see an output saying listening on port 3000 and SQLite database initialized successfully.)
+
+Step 2: Start the Frontend Application
+Open a second, new terminal and navigate to your project's frontend folder:
+bash
+cd "c:\Users\HP\OneDrive\Attachments\Desktop\PCTE-alumni-talk-depReady-main\reactFrontend"
+Start the React development server:
+bash
+npm run dev
+(You will see an output saying VITE v7.0.6 ready and it will give you the Local link.)
+
+Step 3: Open the Website!
+Now you can open your web browser and go to: 👉 http://localhost:5173
+
+Important Credentials
+When you want to log into the Admin panel, click "Admin" in the top-right navigation or go to http://localhost:5173/admin and use these credentials:
+
+Email: admin@pcte.edu
+Password: admin1234
+That's it! As long as those two terminals are running in the background, your full-stack app will work perfectly offline.
+
+run
+
+

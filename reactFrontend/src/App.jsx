@@ -1,0 +1,55 @@
+import React from "react";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
+import AdminPanel from "./pages/AdminPanel";
+import Dashboard from "./components/Dashboard";
+import AddAlumni from "./components/AddAlumni";
+import { ToastContainer } from "react-toastify";
+import PlanMeet from "./components/PlanMeet";
+import StudentPanel from "./pages/StudentPanel";
+import Home from "./studentPanel component/Home";
+import Talks from "./studentPanel component/Talks";
+import TalkInsight from "./studentPanel component/TalkInsight";
+import AuthPage from "./pages/AuthPage";
+import ProtectedRoute from "./components/ProtectedRoute";
+import Loader from "./components/Loader";
+import ScrollToTop from "./utils/ScrollToTop";
+import Report from "./components/Report";
+import About from "./pages/About";
+import Schedule from "./pages/Schedule";
+
+function App() {
+  return (
+    <>
+      <BrowserRouter>
+        <Routes>
+          <Route
+            path="/admin"
+            element={
+              <ProtectedRoute>
+                <AdminPanel />
+              </ProtectedRoute>
+            }
+          >
+            <Route index element={<Dashboard />} />
+            <Route path="add-alumni" element={<AddAlumni />} />
+            <Route path="plan-meet" element={<PlanMeet />} />
+            <Route path="stats" element={<Report />} />
+          </Route>
+          <Route path="/" element={<StudentPanel />}>
+            <Route index element={<Home />} />
+            <Route path="talks" element={<Talks />} />
+            <Route path="talkInsight" element={<TalkInsight />} />
+            <Route path="about" element={<About />} />
+            <Route path="schedule" element={<Schedule />} />
+          </Route>
+          <Route path="/auth" element={<AuthPage />} />
+          <Route path="/load" element={<Loader />} />
+          <Route path="*" element={<h1>Not Found</h1>} />
+        </Routes>
+      </BrowserRouter>
+      <ToastContainer />
+    </>
+  );
+}
+
+export default App;
