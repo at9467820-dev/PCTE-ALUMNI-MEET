@@ -39,6 +39,7 @@ app.use(
     origin: [
       "http://localhost:5173",
       "http://localhost:5175",
+      "http://localhost:5176",
       "https://pcte-alumni-talk-dep-ready.vercel.app",
       "https://pcte-alumni-talk-dep-ready-7smeq2pj4-ankits-projects-0633ce92.vercel.app",
       "http://192.168.29.104:5173"
