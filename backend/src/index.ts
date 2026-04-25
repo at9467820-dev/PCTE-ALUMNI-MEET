@@ -43,6 +43,7 @@ app.use(
       "https://pcte-alumni-talk-dep-ready.vercel.app",
       "https://pcte-alumni-talk-dep-ready-7smeq2pj4-ankits-projects-0633ce92.vercel.app",
       "https://pcte-alumni-meet.vercel.app",
+      "https://pcte-alumni-meet-uclt.vercel.app",
       "http://192.168.29.104:5173"
     ],
     credentials: true
