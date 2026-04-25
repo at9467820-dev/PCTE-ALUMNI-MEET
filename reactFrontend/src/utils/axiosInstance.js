@@ -1,7 +1,10 @@
 import axios from "axios";
 
+const isProduction = typeof window !== "undefined" && !window.location.hostname.includes("localhost");
+const API_URL = import.meta.env.VITE_API_URL || (isProduction ? "https://pcte-alumni-meet-1.onrender.com" : "http://localhost:3000/");
+
 const axiosInstance = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || "http://localhost:3000/",
+  baseURL: API_URL,
   withCredentials: true,
 });
 
